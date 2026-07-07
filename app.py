@@ -1,34 +1,54 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# Cargar los datos generados de forma segura
+# ==========================================================
+# GENERACIÓN DE DATOS DIRECTA (Evita errores de lectura CSV)
+# ==========================================================
 @st.cache_data
-def load_data():
-    # 1. Leemos el archivo CSV
-    df = pd.read_csv('dataset_personal.csv')
-    
-    # 2. Limpiamos espacios fantasmas en los nombres de las columnas
-    df.columns = df.columns.str.strip()
-    
-    # 3. Si por alguna razón Pandas unió las columnas (ej: "promedio_ponderado,asistencia_porcentaje,...")
-    # dividimos los nombres y reestructuramos el DataFrame correctamente
-    if len(df.columns) == 1 and ',' in df.columns[0]:
-        real_columns = df.columns[0].split(',')
-        # Limpiar espacios en los nombres reales
-        real_columns = [col.strip() for col in real_columns]
-        # Separar los datos de la fila única mal leída
-        df = df[df.columns[0]].str.split(',', expand=True)
-        df.columns = real_columns
-        # Convertir a tipos numéricos para que no falle el promedio (.mean())
-        for col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='ignore')
-            
-    return df
+def generate_clean_data():
+    # Tu semilla asignada (050 -> 50) y cantidad de registros (3050)
+    np.random.seed(50)
+    num_registros = 3050
 
-df = load_data()
+    # Variables base
+    promedio = np.random.uniform(0, 20, num_registros)
+    asistencia = np.random.uniform(40, 100, num_registros)
+    ingreso = np.random.normal(2500, 800, num_registros).clip(1025, 8000)
+    horas = np.random.poisson(15, num_registros).clip(0, 40)
+    edad = np.random.randint(16, 35, num_registros)
 
+    df_internal = pd.DataFrame({
+        'promedio_ponderado': promedio,
+        'asistencia_porcentaje': asistencia,
+        'ingreso_familiar': ingreso,
+        'horas_estudio_semanal': horas,
+        'edad': edad
+    })
+
+    # Variables derivadas obligatorias
+    df_internal['riesgo_academico'] = ((df_internal['promedio_ponderado'] < 11.5) & (df_internal['asistencia_porcentaje'] < 70)).astype(int)
+    df_internal['horas_por_credito'] = round(df_internal['horas_estudio_semanal'] / df_internal['edad'], 3)
+    df_internal['indice_vulnerabilidad'] = round(((20 - df_internal['promedio_ponderado']) * (100 - df_internal['asistencia_porcentaje'])) / (df_internal['ingreso_familiar'] / 100), 3)
+
+    # Variable objetivo lógica (Deserción Universitaria)
+    score_desercion = (
+        (df_internal['promedio_ponderado'] < 11.5) * 0.4 + 
+        (df_internal['asistencia_porcentaje'] < 75) * 0.3 + 
+        (df_internal['ingreso_familiar'] < 1500) * 0.2 +
+        (df_internal['riesgo_academico'] == 1) * 0.1
+    )
+    df_internal['desertor'] = (score_desercion > 0.35).astype(int)
+    return df_internal
+
+# Carga de datos limpia y segura
+df = generate_clean_data()
+
+# ==========================================================
+# INTERFAZ DEL DASHBOARD (STREAMLIT)
+# ==========================================================
 st.title("📊 Dashboard de Control de Deserción Universitaria (Cód: 050)")
 st.markdown("Herramienta interactiva para la identificación temprana de alertas académicas.")
 
