@@ -3,10 +3,13 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# Cargar los datos generados
+# Cargar los datos generados y limpiar los nombres de las columnas
 @st.cache_data
 def load_data():
-    return pd.read_csv('dataset_personal.csv')
+    df = pd.read_csv('dataset_personal.csv')
+    # ESTA LÍNEA ELIMINA LOS ESPACIOS EN BLANCO AL INICIO Y AL FINAL DE CADA COLUMNA
+    df.columns = df.columns.str.strip()
+    return df
 
 df = load_data()
 
