@@ -3,12 +3,28 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# Cargar los datos generados y limpiar los nombres de las columnas
+# Cargar los datos generados de forma segura
 @st.cache_data
 def load_data():
+    # 1. Leemos el archivo CSV
     df = pd.read_csv('dataset_personal.csv')
-    # ESTA LÍNEA ELIMINA LOS ESPACIOS EN BLANCO AL INICIO Y AL FINAL DE CADA COLUMNA
+    
+    # 2. Limpiamos espacios fantasmas en los nombres de las columnas
     df.columns = df.columns.str.strip()
+    
+    # 3. Si por alguna razón Pandas unió las columnas (ej: "promedio_ponderado,asistencia_porcentaje,...")
+    # dividimos los nombres y reestructuramos el DataFrame correctamente
+    if len(df.columns) == 1 and ',' in df.columns[0]:
+        real_columns = df.columns[0].split(',')
+        # Limpiar espacios en los nombres reales
+        real_columns = [col.strip() for col in real_columns]
+        # Separar los datos de la fila única mal leída
+        df = df[df.columns[0]].str.split(',', expand=True)
+        df.columns = real_columns
+        # Convertir a tipos numéricos para que no falle el promedio (.mean())
+        for col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='ignore')
+            
     return df
 
 df = load_data()
